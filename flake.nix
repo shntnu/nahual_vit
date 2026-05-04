@@ -7,6 +7,7 @@
     flake-utils.url = "github:numtide/flake-utils";
     flake-utils.inputs.systems.follows = "systems";
     nahual-flake.url = "github:afermg/nahual";
+    nahual-flake.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs =
