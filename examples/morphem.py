@@ -1,7 +1,13 @@
 """
-This example uses a server within the environment defined on `https://github.com/afermg/nahual_vit.git`.
+This example uses a server within the environment defined on
+`https://github.com/afermg/nahual_vit.git`. nahual_vit serves multiple
+models from per-file entrypoints under `src/vit/` (one server file per
+model — there is NO single `server.py` at the repo root).
 
-Run `nix develop --command bash -c "python src/vit/morphem.py ipc:///tmp/morphem.ipc"` from the root directory of that repository.
+Run with either:
+    nix run github:afermg/nahual_vit -- ipc:///tmp/morphem.ipc
+or, from a local checkout:
+    nix develop --command bash -c "python src/vit/morphem.py ipc:///tmp/morphem.ipc"
 """
 
 import numpy

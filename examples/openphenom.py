@@ -1,7 +1,16 @@
 """
-This example uses a server within the environment defined on `https://github.com/afermg/nahual_vit.git`.
+Run Visual Transformers using HuggingFace's transformers library
+(here, OpenPhenom).
 
-Run `nix develop --command bash -c "python server.py ipc:///tmp/openphenom.ipc"` from the root directory of that repository.
+This example uses a server within the environment defined on
+`https://github.com/afermg/nahual_vit.git`. nahual_vit serves multiple
+models from per-file entrypoints under `src/vit/` — there is NO single
+`server.py` at the repo root.
+
+Run with either:
+    nix run github:afermg/nahual_vit -- ipc:///tmp/vit.ipc
+or, from a local checkout:
+    nix develop --command bash -c "python src/vit/openphenom.py ipc:///tmp/vit.ipc"
 """
 
 import numpy
@@ -10,11 +19,6 @@ from nahual.process import dispatch_setup_process
 
 setup, process = dispatch_setup_process("vit")
 address = "ipc:///tmp/vit.ipc"
-"""
-Run Visual Transformers using the HuggingFace's transformers library.
-
-Run `nix develop --command bash -c "python src/vit/server.py ipc:///tmp/vit.ipc"` from the root directory of https://github.com/afermg/nahual_vit.
-"""
 
 # %%Load models server-side
 parameters = dict(model_name="recursionpharma/OpenPhenom")
