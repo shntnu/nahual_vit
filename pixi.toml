@@ -1,0 +1,41 @@
+# Cross-platform launcher for the MorphEm / OpenPhenom servers.
+#
+# Parallel to the existing flake.nix - the flake remains the canonical path
+# on Linux+CUDA; this file lets the server run on macOS (MPS) and any Linux
+# host where the Nix derivation is awkward.
+#
+# Usage:
+#   pixi run morphem                      # listens on ipc:///tmp/morphem_$USER.ipc
+#   pixi run morphem ipc:///tmp/other.ipc # custom address
+#   pixi run openphenom
+
+[workspace]
+name = "nahual-vit-pixi"
+description = "MorphEm/OpenPhenom servers via pixi (Darwin-compatible alternative to the Nix flake)"
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "linux-64", "osx-64"]
+
+[tasks]
+# Pass the IPC address as a positional arg:
+#   pixi run morphem ipc:///tmp/morphem_alice.ipc
+# Both servers require an address - they have no built-in default.
+morphem = { cmd = "python src/vit/morphem.py", env = { PYTHONPATH = "src" } }
+openphenom = { cmd = "python src/vit/openphenom.py", env = { PYTHONPATH = "src" } }
+
+[dependencies]
+python = "3.13.*"
+pytorch = ">=2.4"
+torchvision = "*"
+numpy = "*"
+pip = "*"
+
+[pypi-dependencies]
+# Match the Nix flake, which pulls nahual from git (PyPI lags master).
+nahual = { git = "https://github.com/afermg/nahual.git" }
+timm = ">=1.0.22"
+# MorphEm's remote-code vision_transformer.py expects pre-v5 transformers
+# (accesses VisionTransformer.all_tied_weights_keys, removed in 5.x).
+transformers = ">=4.57.3,<5"
+pynng = "*"
+trio = "*"
+loguru = "*"

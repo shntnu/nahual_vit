@@ -12,6 +12,24 @@ guardrail_shapes = {
 }
 
 
+def _resolve_device(device) -> torch.device:
+    """Map a client-supplied device hint to a torch.device the host supports.
+
+    Strings ("cuda:0", "mps", "cpu") pass through. Ints select CUDA when
+    available, fall back to MPS on Apple Silicon, else CPU - so a notebook
+    that hard-codes `device=2` still launches on a Mac.
+    """
+    if isinstance(device, torch.device):
+        return device
+    if isinstance(device, str):
+        return torch.device(device)
+    if torch.cuda.is_available():
+        return torch.device("cuda", int(device))
+    if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
+
+
 def setup_base(model_name: str, process_pixels: Callable, **kwargs) -> dict:
     # Some default values
     device = kwargs.get("device", 0)
@@ -19,7 +37,7 @@ def setup_base(model_name: str, process_pixels: Callable, **kwargs) -> dict:
     setup_defaults = dict(
         trust_remote_code=True,
         dtype="auto",
-        device=torch.device(device),
+        device=_resolve_device(device),
     )
     execution_defaults = dict()
 
