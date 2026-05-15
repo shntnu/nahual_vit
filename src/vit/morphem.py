@@ -63,7 +63,25 @@ def process_pixels(
 ) -> numpy.ndarray:
     """Apply a pretrained model. We pass arguments that encode the necessary input shapes and number of channels to pad. We will valudate the yx dimensions and pad the channel dimension with zeros.
 
-    The pixels should be in order NCZYX (Tile, Channel, ZYX).
+    Input contract (caller side)
+    ----------------------------
+    pixels : NCZYX uint8 in [0, 255]; H, W divisible by 16; Z=1.
+        Channels are processed independently (bag-of-channels) — pass each
+        biological channel as a separate slot.
+
+    Server-side normalization (per channel, applied here)
+    -----------------------------------------------------
+    SaturationNoiseInjector (saturated pixels == 255 → uniform [200, 255])
+        → PerImageNormalize (InstanceNorm2d, per-image mean/std)
+        → Resize to 224×224 antialias.
+
+    The uint8 dtype is load-bearing: the saturation injector keys on the
+    exact value 255, which only survives if the caller passes raw 8-bit
+    pixels (not rescaled to [0, 1]).
+
+    Output
+    ------
+    (N, C × 384) — per-channel CLS tokens concatenated along feature axis.
     """
 
     _, input_channels, _, *input_yx = pixels.shape
@@ -107,14 +125,11 @@ class SaturationNoiseInjector(nn.Module):
         self.high = high
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        channel = x[0].clone()
-        noise = torch.empty_like(channel).uniform_(self.low, self.high)
-        mask = (channel == 255).float()
-        noise_masked = noise * mask
-        channel[channel == 255] = 0
-        channel = channel + noise_masked
-        x[0] = channel
-        return x
+        # Apply to every pixel in the input regardless of rank/batch shape:
+        # the original code's `x[0]` indexed only the first tile in a batch,
+        # leaving the rest untouched.
+        noise = torch.empty_like(x).uniform_(self.low, self.high)
+        return torch.where(x == 255, noise, x)
 
 
 # Self Normalize transformation

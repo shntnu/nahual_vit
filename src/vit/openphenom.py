@@ -52,7 +52,23 @@ def process_pixels(
 ) -> numpy.ndarray:
     """Apply a pretrained model. We pass arguments that encode the necessary input shapes and number of channels to pad. We will valudate the yx dimensions and pad the channel dimension with zeros.
 
-    The pixels should be in order NCZYX (Tile, Channel, ZYX).
+    Input contract (caller side)
+    ----------------------------
+    pixels : NCZYX uint8 in [0, 255]; H, W divisible by 16; Z=1.
+        OpenPhenom is channel-agnostic — pass however many channels you have
+        (registered guardrail is ``(None, 16)``, i.e. no channel padding).
+        Tile size 256 is what Recursion used in the paper; we don't enforce
+        it but the embedding is most comparable at that resolution.
+
+    Server-side normalization (applied here)
+    ----------------------------------------
+    None — ``model.predict`` runs the model's own internal preprocessing on
+    raw uint8 pixels. Pre-scaling to [0, 1] or z-scoring will degrade
+    embeddings.
+
+    Output
+    ------
+    (N, 384) — a single 384-d embedding per tile.
     """
 
     _, input_channels, _, *input_yx = pixels.shape
