@@ -4,10 +4,10 @@
 # on Linux+CUDA; this file lets the server run on macOS (MPS) and any Linux
 # host where the Nix derivation is awkward.
 #
-# Usage:
-#   pixi run morphem                      # listens on ipc:///tmp/morphem_$USER.ipc
-#   pixi run morphem ipc:///tmp/other.ipc # custom address
-#   pixi run openphenom
+# Two environments because the CUDA system-requirement is platform-gated and
+# pixi cannot mix it transparently with a no-CUDA macOS path in one env:
+#   Linux+CUDA: pixi run morphem ipc:///tmp/morphem_$USER.ipc
+#   macOS+MPS:  pixi run -e osx morphem ipc:///tmp/morphem_$USER.ipc
 
 [workspace]
 name = "nahual-vit-pixi"
@@ -24,10 +24,26 @@ openphenom = { cmd = "python src/vit/openphenom.py", env = { PYTHONPATH = "src" 
 
 [dependencies]
 python = "3.13.*"
-pytorch = ">=2.4"
 torchvision = "*"
 numpy = "*"
 pip = "*"
+
+[feature.linux-gpu]
+platforms = ["linux-64"]
+system-requirements = { cuda = "12" }
+[feature.linux-gpu.dependencies]
+pytorch-gpu = ">=2.4"
+
+[feature.osx-mps]
+platforms = ["osx-arm64", "osx-64"]
+[feature.osx-mps.dependencies]
+pytorch = ">=2.4"
+
+[environments]
+# Default is the Linux+CUDA env (matches the canonical platform). macOS users
+# pick the `osx` env explicitly with `pixi run -e osx morphem`.
+default = { features = ["linux-gpu"], solve-group = "linux" }
+osx = { features = ["osx-mps"], solve-group = "osx" }
 
 [pypi-dependencies]
 # Match the Nix flake, which pulls nahual from git (PyPI lags master).
