@@ -1,0 +1,57 @@
+# Cross-platform launcher for the MorphEm / OpenPhenom servers.
+#
+# Parallel to the existing flake.nix - the flake remains the canonical path
+# on Linux+CUDA; this file lets the server run on macOS (MPS) and any Linux
+# host where the Nix derivation is awkward.
+#
+# Two environments because the CUDA system-requirement is platform-gated and
+# pixi cannot mix it transparently with a no-CUDA macOS path in one env:
+#   Linux+CUDA: pixi run morphem ipc:///tmp/morphem_$USER.ipc
+#   macOS+MPS:  pixi run -e osx morphem ipc:///tmp/morphem_$USER.ipc
+
+[workspace]
+name = "nahual-vit-pixi"
+description = "MorphEm/OpenPhenom servers via pixi (Darwin-compatible alternative to the Nix flake)"
+channels = ["conda-forge"]
+platforms = ["osx-arm64", "linux-64", "osx-64"]
+
+[tasks]
+# Pass the IPC address as a positional arg:
+#   pixi run morphem ipc:///tmp/morphem_alice.ipc
+# Both servers require an address - they have no built-in default.
+morphem = { cmd = "python src/vit/morphem.py", env = { PYTHONPATH = "src" } }
+openphenom = { cmd = "python src/vit/openphenom.py", env = { PYTHONPATH = "src" } }
+
+[dependencies]
+python = "3.13.*"
+torchvision = "*"
+numpy = "*"
+pip = "*"
+
+[feature.linux-gpu]
+platforms = ["linux-64"]
+system-requirements = { cuda = "12" }
+[feature.linux-gpu.dependencies]
+pytorch-gpu = ">=2.4"
+
+[feature.osx-mps]
+platforms = ["osx-arm64", "osx-64"]
+[feature.osx-mps.dependencies]
+pytorch = ">=2.4"
+
+[environments]
+# Default is the Linux+CUDA env (matches the canonical platform). macOS users
+# pick the `osx` env explicitly with `pixi run -e osx morphem`.
+default = { features = ["linux-gpu"], solve-group = "linux" }
+osx = { features = ["osx-mps"], solve-group = "osx" }
+
+[pypi-dependencies]
+# Match the Nix flake, which pulls nahual from git (PyPI lags master).
+nahual = { git = "https://github.com/afermg/nahual.git" }
+timm = ">=1.0.22"
+# MorphEm's remote-code vision_transformer.py expects pre-v5 transformers
+# (accesses VisionTransformer.all_tied_weights_keys, removed in 5.x).
+transformers = ">=4.57.3,<5"
+pynng = "*"
+trio = "*"
+loguru = "*"
